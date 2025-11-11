@@ -1,0 +1,64 @@
+//
+//  File.swift
+//  TravelAPI
+//
+//  Created by Isaque da Silva on 11/10/25.
+//
+
+import Fluent
+import FluentPostgresDriver
+
+struct Passenger: Sendable {
+    static let schema = "passengers"
+}
+
+// MARK: Field Name
+extension Passenger {
+    enum Column: String {
+        case id = "id"
+        case userID = "user_id"
+        case createdAt = "created_at"
+        
+        var key: FieldKey {
+            .init(stringLiteral: self.rawValue)
+        }
+    }
+}
+
+// MARK: Migration
+extension Passenger {
+    struct Migration: AsyncMigration {
+        func prepare(on database: any Database) async throws {
+            try await database.schema(Passenger.schema)
+                .field(
+                    Column.id.key,
+                    .uuid,
+                    .required,
+                    .identifier(auto: true)
+                )
+                .field(
+                    Column.userID.key,
+                    .uuid,
+                    .required,
+                    .references(
+                        User.schema,
+                        User.Column.id.key,
+                        onDelete: .cascade,
+                        onUpdate: .cascade
+                    ),
+                    .sql(.unique)
+                )
+                .field(
+                    Column.createdAt.key,
+                    .date,
+                    .required,
+                    .sql(.custom(SQLRaw("CURRENT_DATE")))
+                )
+                .create()
+        }
+        
+        func revert(on database: any Database) async throws {
+            
+        }
+    }
+}
