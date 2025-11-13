@@ -20,10 +20,34 @@ extension User {
         case email = "email"
         case passwordHash = "password_hash"
         case lastLoggedDate = "last_logged_date"
-        case createdAt = "createdAt"
+        case createdAt = "created_at"
         
         var key: FieldKey {
             .init(stringLiteral: self.rawValue)
+        }
+        
+        static var createNewInstanceRows: [String] {
+            [Self.name.rawValue, Self.email.rawValue, Self.passwordHash.rawValue]
+        }
+        
+        static var queryInstanceRows: [String] {
+            [
+                Self.id.rawValue,
+                Self.name.rawValue,
+                Self.email.rawValue,
+                "\(Self.createdAt.rawValue) AS \"createdAt\""
+            ]
+        }
+        
+        static var queryFullInstanceRows: [String] {
+            [
+                Self.id.rawValue,
+                Self.email.rawValue,
+                Self.name.rawValue,
+                "\(Self.passwordHash.rawValue) AS \"passwordHash\"",
+                "\(Self.lastLoggedDate.rawValue) AS \"lastLoggedDate\"",
+                "\(Self.createdAt.rawValue) AS \"createdAt\""
+            ]
         }
     }
 }
@@ -41,7 +65,8 @@ extension User {
                     Column.id.key,
                     .uuid,
                     .required,
-                    .identifier(auto: true)
+                    .identifier(auto: true),
+                    .sql(.unique)
                 )
                 .field(
                     Column.name.key,
