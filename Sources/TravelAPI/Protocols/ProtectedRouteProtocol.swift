@@ -1,22 +1,30 @@
+//
+//  ProtectedRouteProtocol.swift
+//  TravelAPI
+//
+//  Created by Isaque da Silva on 11/11/25.
+//
+
+
 import Vapor
 
 protocol ProtectedRouteProtocol {
-    func userProtectedRoute(by routes: RoutesBuilder) -> RoutesBuilder
-    func tokenProtectedRoute(with routes: RoutesBuilder) -> RoutesBuilder
+    func userProtectedRoute(by routes: any RoutesBuilder) -> any RoutesBuilder
+    func tokenProtectedRoute(with routes: any RoutesBuilder) -> any RoutesBuilder
 }
 
 extension ProtectedRouteProtocol {
-    func userProtectedRoute(by routes: RoutesBuilder) -> RoutesBuilder {
+    func userProtectedRoute(by routes: any RoutesBuilder) -> any RoutesBuilder {
         let userAuthenticator = Authenticator()
-        let userGuardMiddleware = User.guardMiddleware()
+        let userGuardMiddleware = GetUserDTO.guardMiddleware()
         
         return routes.grouped(userAuthenticator, userGuardMiddleware)
     }
     
-    func tokenProtectedRoute(with routes: RoutesBuilder) -> RoutesBuilder {
-        let tokenAuthenticator = Payload.authenticator()
-        let tokenGuardMiddleware = Payload.guardMiddleware()
+    func tokenProtectedRoute(with routes: any RoutesBuilder) -> any RoutesBuilder {
+//        let tokenAuthenticator = Payload.authenticator()
+//        let tokenGuardMiddleware = Payload.guardMiddleware()
         
-        return routes.grouped(tokenAuthenticator, tokenGuardMiddleware, TokenAuthenticatorMiddleware())
+        return routes/*.grouped(tokenAuthenticator, tokenGuardMiddleware, TokenAuthenticatorMiddleware())*/
     }
 }
