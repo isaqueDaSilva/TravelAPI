@@ -16,6 +16,14 @@ enum EnvironmentValues {
         return databaseKey
     }
     
+    static func jwtSecret() throws -> String {
+        guard let jwtSecret = Environment.get("JWT_SECRET") else {
+            throw Abort(.internalServerError)
+        }
+        
+        return jwtSecret
+    }
+    
     static func jwtIssuer() throws -> String {
         guard let subjectClaim = Environment.get("JWT_ISSUER") else {
             throw Abort(.internalServerError)
