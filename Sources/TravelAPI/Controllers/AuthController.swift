@@ -10,7 +10,7 @@ import Vapor
 struct AuthController: RouteCollection, ProtectedRouteProtocol {
     func boot(routes: any RoutesBuilder) throws {
         let authRoute = routes.grouped("auth")
-        let userProtectedRoute = userProtectedRoute(by: authRoute)
+        //let userProtectedRoute = userProtectedRoute(by: authRoute)
         
         // -> POST /auth/signup
         authRoute.post("signup") { try await self.signup(with: $0) }
@@ -21,7 +21,7 @@ struct AuthController: RouteCollection, ProtectedRouteProtocol {
     
     @Sendable
     private func signup(with request: Request) async throws -> AuthResponse {
-        try CreateUserDTO.validate(query: request)
+        try CreateUserDTO.validate(content: request)
         
         let createUserDTO = try request.content.decode(CreateUserDTO.self)
         let hashedPassword = try Bcrypt.hash(createUserDTO.password)
@@ -34,20 +34,19 @@ struct AuthController: RouteCollection, ProtectedRouteProtocol {
                 using: database
             )
             
-            let pairOfTokens = try await JWTService.createPairOfJWTs(userID: newUser.id, jwtHandler: request.jwt)
+            let accessToken = try await JWTService.generateJWT(userID: newUser.id, jwtHandler: request.jwt)
+            let (refreshToken, refreshTokenHash) = try SessionService.generateRawAndHashRefreshToken(from: newUser)
             
             try await SessionService.createSession(
                 with: newUser.id,
-                atVerificationCode: pairOfTokens.validationCode,
-                refreshTokenID: pairOfTokens.refreshTokenID,
-                refreshToken: pairOfTokens.refreshToken,
+                refreshTokenHash: refreshTokenHash,
                 using: database
             )
             
             return .init(
                 userProfile: newUser,
-                accessToken: pairOfTokens.accessToken,
-                refreshTokenID: pairOfTokens.refreshTokenID
+                accessToken: accessToken,
+                refreshToken: refreshToken
             )
         }
     }
@@ -56,20 +55,15 @@ struct AuthController: RouteCollection, ProtectedRouteProtocol {
     private func signin(with request: Request) async throws -> AuthResponse {
         let user = try request.auth.require(GetUserDTO.self)
         
-        let pairOfTokens = try await JWTService.createPairOfJWTs(userID: user.id, jwtHandler: request.jwt)
+        let accessToken = try await JWTService.generateJWT(userID: user.id, jwtHandler: request.jwt)
+        let (refreshToken, refreshTokenHash) = try SessionService.generateRawAndHashRefreshToken(from: user)
         
-        try await SessionService.createSession(
-            with: user.id,
-            atVerificationCode: pairOfTokens.validationCode,
-            refreshTokenID: pairOfTokens.refreshTokenID,
-            refreshToken: pairOfTokens.refreshToken,
-            using: request.db
-        )
+        try await SessionService.createSession(with: user.id, refreshTokenHash: refreshTokenHash, using: request.db)
         
         return .init(
             userProfile: user,
-            accessToken: pairOfTokens.accessToken,
-            refreshTokenID: pairOfTokens.refreshTokenID
+            accessToken: accessToken,
+            refreshToken: refreshToken
         )
     }
 }
