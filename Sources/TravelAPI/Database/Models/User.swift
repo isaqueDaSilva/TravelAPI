@@ -34,8 +34,7 @@ extension User {
             [
                 Self.id.rawValue,
                 Self.name.rawValue,
-                Self.email.rawValue,
-                "\(Self.createdAt.rawValue) AS \"createdAt\""
+                Self.email.rawValue
             ]
         }
         
@@ -56,48 +55,18 @@ extension User {
 extension User {
     struct Migration: AsyncMigration {
         func prepare(on database: any Database) async throws {
-            let checkEmail = SQLQueryString(
-                stringInterpolation: "\(unsafeRaw: Column.email.rawValue) LIKE '%@%_%.%_%'"
-            )
+            let query = SQLQueryString(stringInterpolation: """
+                CREATE TABLE IF NOT EXISTS \(ident: User.schema) (
+                    \(ident: User.Column.id.rawValue) UUID PRIMARY KEY DEFAULT gen_random_uuid() UNIQUE NOT NULL, 
+                    \(ident: User.Column.name.rawValue) TEXT NOT NULL,
+                    \(ident: User.Column.email.rawValue) TEXT UNIQUE NOT NULL CHECK (\(unsafeRaw: Column.email.rawValue) LIKE '%@%_%.%_%'),
+                    \(ident: User.Column.passwordHash.rawValue) TEXT NOT NULL, 
+                    \(ident: User.Column.lastLoggedDate.rawValue) TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                    \(ident: User.Column.createdAt.rawValue) DATE DEFAULT CURRENT_DATE NOT NULL
+                )
+            """)
             
-            try await database.schema(User.schema)
-                .field(
-                    Column.id.key,
-                    .uuid,
-                    .required,
-                    .identifier(auto: true),
-                    .sql(.unique)
-                )
-                .field(
-                    Column.name.key,
-                    .string,
-                    .required
-                )
-                .field(
-                    Column.email.key,
-                    .string,
-                    .required,
-                    .sql(.unique),
-                    .sql(.check(checkEmail)),
-                )
-                .field(
-                    Column.passwordHash.key,
-                    .string,
-                    .required
-                )
-                .field(
-                    Column.lastLoggedDate.key,
-                    .datetime,
-                    .required,
-                    .sql(.custom(SQLRaw("CURRENT_TIMESTAMP")))
-                )
-                .field(
-                    Column.createdAt.key,
-                    .date,
-                    .required,
-                    .sql(.custom(SQLRaw("CURRENT_DATE")))
-                )
-                .create()
+            try await (database as! (any SQLDatabase)).raw(query).run()
         }
         
         func revert(on database: any Database) async throws {
