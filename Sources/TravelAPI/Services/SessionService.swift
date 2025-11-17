@@ -7,18 +7,22 @@
 
 import Fluent
 import FluentPostgresDriver
+import Vapor
 
-enum SessionService {    
+enum SessionService {
+    static func generateRawAndHashRefreshToken(from user: GetUserDTO) throws -> (refreshToken: String, refreshTokenHash: String) {
+        let refreshToken = user.generateSessionID()
+        return (refreshToken: refreshToken, refreshTokenHash: try Bcrypt.hash(refreshToken))
+    }
+    
     static func createSession(
         with userID: UUID,
-        atVerificationCode: String,
-        refreshTokenID: String,
-        refreshToken: String,
+        refreshTokenHash: String,
         using connection: any Database
     ) async throws {
         let query = SQLQueryString(stringInterpolation: """
             INSERT INTO \(ident: Session.schema) (\(idents: Session.Column.createNewInstanceRows, joinedBy: ", "))
-            VALUES (\(bind: userID), \(bind: atVerificationCode), \(bind: refreshTokenID), \(bind: refreshToken))
+            VALUES (\(bind: userID), \(bind: refreshTokenHash))
         """)
         
         try await (connection as! (any SQLDatabase)).raw(query).run()
