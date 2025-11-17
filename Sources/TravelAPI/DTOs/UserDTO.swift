@@ -32,7 +32,18 @@ extension User {
         let id: UUID
         let name: String
         let email: String
-        let createdAt: Date
+        
+        enum CodingKeys: CodingKey {
+            case id
+            case name
+            case email
+        }
+        
+        func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(self.name, forKey: .name)
+            try container.encode(self.email, forKey: .email)
+        }
     }
     
     struct FullUser: Content, Sendable {
@@ -44,7 +55,7 @@ extension User {
         let createdAt: Date
         
         func toGetUser() -> GetUser {
-            .init(id: id, name: name, email: email, createdAt: createdAt)
+            .init(id: id, name: name, email: email)
         }
     }
 }
