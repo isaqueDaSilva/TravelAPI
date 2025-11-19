@@ -9,6 +9,11 @@ import Vapor
 
 struct AuthResponse: Content {
     let userProfile: GetUserDTO
+    let tokens: AuthTokens
+}
+
+struct AuthTokens: Content {
     let accessToken: String
     let refreshToken: String
+    let sessionID: UUID
 }
