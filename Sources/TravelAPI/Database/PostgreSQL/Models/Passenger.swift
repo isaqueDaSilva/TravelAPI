@@ -34,7 +34,8 @@ extension Passenger {
                     Column.id.key,
                     .uuid,
                     .required,
-                    .identifier(auto: true)
+                    .identifier(auto: true),
+                    .sql(.unique)
                 )
                 .field(
                     Column.userID.key,

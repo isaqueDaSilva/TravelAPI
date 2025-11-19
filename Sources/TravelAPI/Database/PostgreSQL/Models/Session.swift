@@ -31,6 +31,12 @@ extension Session {
                 Self.refreshToken.rawValue
             ]
         }
+        
+        static var queryInstanceRows: [String] {
+            [
+                Self.id.rawValue
+            ]
+        }
     }
 }
 

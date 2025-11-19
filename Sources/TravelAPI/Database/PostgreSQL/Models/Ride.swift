@@ -45,7 +45,8 @@ extension Ride {
                     Column.id.key,
                     .uuid,
                     .required,
-                    .identifier(auto: true)
+                    .identifier(auto: true),
+                    .sql(.unique)
                 )
                 .field(
                     Column.passengerID.key,
@@ -125,6 +126,8 @@ extension Ride {
                     .sql(.custom(SQLRaw("CURRENT_TIMESTAMP")))
                 )
                 .create()
+            
+            try await addTrigger(at: (database as! (any SQLDatabase)))
         }
         
         func revert(on database: any Database) async throws {
