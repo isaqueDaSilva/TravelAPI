@@ -17,7 +17,7 @@ enum UserService {
             RETURNING \(idents: User.Column.queryInstanceRows, joinedBy: ", ")
         """)
         
-        guard let user = try await (connection as! (any SQLDatabase)).raw(query).first(decoding: GetUserDTO.self) else {
+        guard let user = try await databaseConnection(connection).raw(query).first(decoding: GetUserDTO.self) else {
             throw Abort(.internalServerError, reason: "Failed to create user")
         }
         
@@ -35,10 +35,19 @@ enum UserService {
             WHERE email = \(bind: email);
         """)
         
-        guard let user = try await (connection as! (any SQLDatabase)).raw(query).first(decoding: FullUserDTO.self) else {
+        guard let user = try await databaseConnection(connection).raw(query).first(decoding: FullUserDTO.self) else {
             throw Abort(.internalServerError, reason: "No user found with that email")
         }
         
         return user
+    }
+    
+    static func deleteUser(withID userID: UUID, using connection: any Database) async throws {
+        let query = SQLQueryString(stringInterpolation: """
+            DELETE FROM \(ident: User.schema)
+            WHERE \(ident: User.Column.id.rawValue) = \(bind: userID)
+        """)
+        
+        try await databaseConnection(connection).raw(query).run()
     }
 }
