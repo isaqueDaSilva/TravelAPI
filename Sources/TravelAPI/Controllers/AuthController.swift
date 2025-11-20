@@ -93,10 +93,10 @@ struct AuthController: RouteCollection, ProtectedRouteProtocol {
         try await SessionService.deleteSessionWith(userID: payload.getUserID(), using: request.db)
         
         if payload.expiration.value > Date.now {
-            try await JWTService.addJWTToBlacklist(
-                accessTokenID: payload.jwtID.value,
-                accessToken: request.headers.bearerAuthorization!.token,
-                remindTime: Int(payload.expiration.value.timeIntervalSinceNow),
+            try await RedisService.setex(
+                withKey: payload.jwtID.value,
+                value: request.headers.bearerAuthorization!.token,
+                ttl: Int(payload.expiration.value.timeIntervalSinceNow),
                 on: request.redis
             )
         }
@@ -120,10 +120,10 @@ struct AuthController: RouteCollection, ProtectedRouteProtocol {
         try await UserService.deleteUser(withID: payload.getUserID(), using: request.db)
         
         if payload.expiration.value > Date.now {
-            try await JWTService.addJWTToBlacklist(
-                accessTokenID: payload.jwtID.value,
-                accessToken: request.headers.bearerAuthorization!.token,
-                remindTime: Int(payload.expiration.value.timeIntervalSinceNow),
+            try await RedisService.setex(
+                withKey: payload.jwtID.value,
+                value: request.headers.bearerAuthorization!.token,
+                ttl: Int(payload.expiration.value.timeIntervalSinceNow),
                 on: request.redis
             )
         }
