@@ -8,6 +8,14 @@
 import Vapor
 
 enum EnvironmentValues {
+    static func redisKey() throws -> String {
+        guard let redisKey = Environment.get("REDIS_URL") else {
+            throw Abort(.internalServerError)
+        }
+        
+        return redisKey
+    }
+    
     static func databaseKey() throws -> String {
         guard let databaseKey = Environment.get("DATABASE_URL") else {
             throw Abort(.internalServerError)
