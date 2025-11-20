@@ -10,6 +10,7 @@ public func configure(_ app: Application) async throws {
 
     try await JWTConfig.setJWT(withApp: app)
     try DatabaseConfig.setDatabase(withApp: app)
+    try RedisConfig.setRedis(with: app)
     DatabaseConfig.setMigrations(withMigrations: app.migrations)
 
     // register routes
