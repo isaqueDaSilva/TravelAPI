@@ -47,7 +47,7 @@ enum SessionService {
         let query = SQLQueryString(stringInterpolation: """
             INSERT INTO \(ident: Session.schema) (\(idents: Session.Column.createNewInstanceRows, joinedBy: ", "))
             VALUES (\(bind: userID), \(bind: refreshTokenHash))
-            RETURNING (\(idents: Session.Column.queryInstanceRows, joinedBy: ", "))
+            RETURNING (\(idents: Session.Column.queryInstanceRows, joinedBy: ", "));
         """)
         
         guard let sessionID = try await databaseConnection(connection).raw(query).first(decoding: UUID.self) else {
@@ -60,10 +60,12 @@ enum SessionService {
     static func findSessionWith(userID: UUID, using connection: any Database) async throws -> String {
         let query = SQLQueryString(stringInterpolation: """
             SELECT \(ident: Session.Column.refreshToken.rawValue) FROM \(ident: Session.schema)
-            WHERE \(ident: Session.Column.userID.rawValue) = \(bind: userID)
+            WHERE \(ident: Session.Column.userID.rawValue) = \(bind: userID);
         """)
         
-        guard let refreshToken = try await databaseConnection(connection).raw(query).first(decoding: String.self) else {
+        let decoder = SQLRowDecoder(keyDecodingStrategy: .convertFromSnakeCase)
+        
+        guard let refreshToken = try await databaseConnection(connection).raw(query).first(decoding: String.self, with: decoder) else {
             throw PostgresError.protocol("No session found for the given user ID.")
         }
         
@@ -71,15 +73,14 @@ enum SessionService {
     }
     
     static func findSessionWith(id: String, using connection: any Database) async throws -> RefreshToken {
-        let refreshTokenColumn = Session.Column.refreshToken.rawValue
-        let userIDColumn = Session.Column.userID.rawValue
-        
         let query = SQLQueryString(stringInterpolation: """
-            SELECT \(ident: refreshTokenColumn) AS "refreshTokenHash", \(ident: userIDColumn) AS "userID" FROM \(ident: Session.schema)
-            WHERE \(ident: Session.Column.id.rawValue) = \(bind: id)
+            SELECT \(idents: Session.Column.queryAllInstancesRows, joinedBy: ", ") FROM \(ident: Session.schema)
+            WHERE \(ident: Session.Column.id.rawValue) = \(bind: id);
         """)
         
-        guard let refreshToken = try await databaseConnection(connection).raw(query).first(decoding: RefreshToken.self) else {
+        let decoder = SQLRowDecoder(keyDecodingStrategy: .convertFromSnakeCase)
+        
+        guard let refreshToken = try await databaseConnection(connection).raw(query).first(decoding: RefreshToken.self, with: decoder) else {
             throw PostgresError.protocol("No session found for the given user ID.")
         }
         
@@ -89,7 +90,7 @@ enum SessionService {
     static func deleteSessionWith(userID: UUID, using connection: any Database) async throws {
         let query = SQLQueryString(stringInterpolation: """
             DELETE FROM \(ident: Session.schema)
-            WHERE \(ident: Session.Column.userID.rawValue) = \(bind: userID)
+            WHERE \(ident: Session.Column.userID.rawValue) = \(bind: userID);
         """)
         
         try await databaseConnection(connection).raw(query).run()
@@ -98,7 +99,7 @@ enum SessionService {
     static func deleteSessionWith(id: String, using connection: any Database) async throws {
         let query = SQLQueryString(stringInterpolation: """
             DELETE FROM \(ident: Session.schema)
-            WHERE \(ident: Session.Column.id.rawValue) = \(bind: id)
+            WHERE \(ident: Session.Column.id.rawValue) = \(bind: id);
         """)
         
         try await databaseConnection(connection).raw(query).run()
