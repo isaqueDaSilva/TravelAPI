@@ -6,7 +6,6 @@
 //
 
 import Fluent
-import FluentPostgresDriver
 import Vapor
 
 enum DatabaseConfig {
@@ -18,6 +17,13 @@ enum DatabaseConfig {
     
     static func setMigrations(withMigrations migrations: Migrations) {
         migrations.add(User.Migration())
+        migrations.add(Passenger.Migration())
+        migrations.add(User.CreatePassengerProfileTriggerFunction())
         migrations.add(Session.Migration())
+        migrations.add(Session.UpdateLastLoggedDateTriggerFunction())
+        migrations.add(Driver.Migration())
+        migrations.add(Status.Migration())
+        migrations.add(Ride.Migration())
+        migrations.add(Ride.RidesRequirePassengerOnInsertTrigger())
     }
 }
