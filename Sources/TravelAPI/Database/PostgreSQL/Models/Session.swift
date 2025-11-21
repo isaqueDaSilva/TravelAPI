@@ -5,7 +5,6 @@
 //  Created by Isaque da Silva on 11/11/25.
 //
 
-import Fluent
 import FluentPostgresDriver
 
 struct Session: Sendable {
@@ -21,10 +20,6 @@ extension Session {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         
-        var key: FieldKey {
-            .init(stringLiteral: self.rawValue)
-        }
-        
         static var createNewInstanceRows: [String] {
             [
                 Self.userID.rawValue,
@@ -35,6 +30,13 @@ extension Session {
         static var queryInstanceRows: [String] {
             [
                 Self.id.rawValue
+            ]
+        }
+        
+        static var queryAllInstancesRows: [String] {
+            [
+                Self.userID.rawValue,
+                Self.refreshToken.rawValue
             ]
         }
     }
@@ -49,25 +51,26 @@ extension Session {
             
             let query = SQLQueryString(stringInterpolation: """
                 CREATE TABLE IF NOT EXISTS \(ident: Session.schema) (
-                    \(ident: Session.Column.id.rawValue) UUID PRIMARY KEY DEFAULT gen_random_uuid() UNIQUE NOT NULL,
-                    \(ident: Session.Column.userID.rawValue) UUID REFERENCES \(ident: userSchema)(\(ident: userIDColumn)) ON DELETE CASCADE NOT NULL,
-                    \(ident: Session.Column.refreshToken.rawValue) TEXT UNIQUE NOT NULL,
-                    \(ident: Session.Column.createdAt.rawValue) DATE DEFAULT CURRENT_DATE NOT NULL,
-                    \(ident: Session.Column.updatedAt.rawValue) TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
-                )
+                    \(ident: Column.id.rawValue) UUID PRIMARY KEY DEFAULT gen_random_uuid() UNIQUE NOT NULL,
+                    \(ident: Column.userID.rawValue) UUID REFERENCES \(ident: userSchema)(\(ident: userIDColumn)) ON DELETE CASCADE NOT NULL,
+                    \(ident: Column.refreshToken.rawValue) TEXT UNIQUE NOT NULL,
+                    \(ident: Column.createdAt.rawValue) DATE DEFAULT CURRENT_DATE NOT NULL,
+                    \(ident: Column.updatedAt.rawValue) TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+                );
             """)
             
-            let sqlDatabase = database as! (any SQLDatabase)
+            let sqlDatabase = try databaseConnection(database)
             
             try await sqlDatabase.raw(query).run()
-            try await addTrigger(at: sqlDatabase)
         }
         
         func revert(on database: any Database) async throws {
             
         }
-        
-        private func addTrigger(at database: any SQLDatabase) async throws {
+    }
+    
+    struct UpdateLastLoggedDateTriggerFunction: AsyncMigration {
+        func prepare(on database: any Database) async throws {
             let updateLastLoggedDateFuntion = "update_last_logged_date()"
             
             let functionQuery = SQLQueryString(stringInterpolation: """
@@ -76,7 +79,7 @@ extension Session {
                 BEGIN
                     UPDATE \(ident: User.schema)
                     SET \(ident: User.Column.lastLoggedDate.rawValue) = CURRENT_TIMESTAMP
-                    WHERE \(ident: User.Column.id.rawValue) = NEW.\(ident: Session.Column.userID.rawValue);
+                    WHERE \(ident: User.Column.id.rawValue) = NEW.\(ident: Column.userID.rawValue);
                     RETURN NEW;
                 END;
                 $$ LANGUAGE plpgsql;
@@ -89,9 +92,15 @@ extension Session {
                 EXECUTE FUNCTION \(unsafeRaw: updateLastLoggedDateFuntion);
             """)
             
-            try await database.raw(functionQuery).run()
+            let sqlDatabase = try databaseConnection(database)
+            
+            try await sqlDatabase.raw(functionQuery).run()
 
-            try await database.raw(triggerQuery).run()
+            try await sqlDatabase.raw(triggerQuery).run()
+        }
+        
+        func revert(on database: any Database) async throws {
+            
         }
     }
 }

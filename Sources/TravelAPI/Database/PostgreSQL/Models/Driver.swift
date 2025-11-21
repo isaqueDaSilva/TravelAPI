@@ -5,7 +5,6 @@
 //  Created by Isaque da Silva on 11/10/25.
 //
 
-import Fluent
 import FluentPostgresDriver
 
 struct Driver: Sendable {
@@ -18,12 +17,19 @@ extension Driver {
         case id = "id"
         case userID = "user_id"
         case carModel = "car_model"
-        case isOnline = "is_online"
-        case isAvailable = "is_available"
         case createdAt = "created_at"
         
-        var key: FieldKey {
-            .init(stringLiteral: self.rawValue)
+        static var createNewInstanceRows: [String] {
+            [
+                Self.userID.rawValue,
+                Self.carModel.rawValue
+            ]
+        }
+        
+        static var queryInstanceRows: [String] {
+            [
+                Self.carModel.rawValue,
+            ]
         }
     }
 }
@@ -32,49 +38,19 @@ extension Driver {
 extension Driver {
     struct Migration: AsyncMigration {
         func prepare(on database: any Database) async throws {
-            try await database.schema(Driver.schema)
-                .field(
-                    Column.id.key,
-                    .uuid,
-                    .required,
-                    .identifier(auto: true),
-                    .sql(.unique)
-                )
-                .field(
-                    Column.userID.key,
-                    .uuid,
-                    .required,
-                    .references(
-                        User.schema,
-                        User.Column.id.key,
-                        onDelete: .cascade,
-                        onUpdate: .cascade
-                    ),
-                    .sql(.unique)
-                )
-                .field(
-                    Column.carModel.key,
-                    .string,
-                    .required
-                )
-                .field(
-                    Column.isOnline.key,
-                    .bool,
-                    .required,
-                    .sql(.default(true))
-                )
-                .field(
-                    Column.isAvailable.key,
-                    .bool,
-                    .sql(.default(true))
-                )
-                .field(
-                    Column.createdAt.key,
-                    .date,
-                    .required,
-                    .sql(.custom(SQLRaw("CURRENT_DATE")))
-                )
-                .create()
+            let userIDColumn = User.Column.id.rawValue
+            let userSchema = User.schema
+            
+            let query = SQLQueryString(stringInterpolation: """
+                CREATE TABLE IF NOT EXISTS \(ident: Driver.schema) (
+                    \(ident: Column.id.rawValue) UUID PRIMARY KEY DEFAULT gen_random_uuid() UNIQUE NOT NULL, 
+                    \(ident: Column.userID.rawValue) UUID REFERENCES \(ident: userSchema)(\(ident: userIDColumn)) ON DELETE CASCADE NOT NULL,
+                    \(ident: Column.carModel.rawValue) TEXT NOT NULL, 
+                    \(ident: Column.createdAt.rawValue) DATE DEFAULT CURRENT_DATE NOT NULL
+                );
+            """)
+            
+            try await databaseConnection(database).raw(query).run()
         }
         
         func revert(on database: any Database) async throws {
