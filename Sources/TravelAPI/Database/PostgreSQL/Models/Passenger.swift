@@ -5,7 +5,6 @@
 //  Created by Isaque da Silva on 11/10/25.
 //
 
-import Fluent
 import FluentPostgresDriver
 
 struct Passenger: Sendable {
@@ -19,8 +18,10 @@ extension Passenger {
         case userID = "user_id"
         case createdAt = "created_at"
         
-        var key: FieldKey {
-            .init(stringLiteral: self.rawValue)
+        static var createNewInstanceRows: [String] {
+            [
+                Self.userID.rawValue,
+            ]
         }
     }
 }
@@ -29,33 +30,18 @@ extension Passenger {
 extension Passenger {
     struct Migration: AsyncMigration {
         func prepare(on database: any Database) async throws {
-            try await database.schema(Passenger.schema)
-                .field(
-                    Column.id.key,
-                    .uuid,
-                    .required,
-                    .identifier(auto: true),
-                    .sql(.unique)
-                )
-                .field(
-                    Column.userID.key,
-                    .uuid,
-                    .required,
-                    .references(
-                        User.schema,
-                        User.Column.id.key,
-                        onDelete: .cascade,
-                        onUpdate: .cascade
-                    ),
-                    .sql(.unique)
-                )
-                .field(
-                    Column.createdAt.key,
-                    .date,
-                    .required,
-                    .sql(.custom(SQLRaw("CURRENT_DATE")))
-                )
-                .create()
+            let userIDColumn = User.Column.id.rawValue
+            let userSchema = User.schema
+            
+            let query = SQLQueryString(stringInterpolation: """
+                CREATE TABLE IF NOT EXISTS \(ident: Passenger.schema) (
+                    \(ident: Column.id.rawValue) UUID PRIMARY KEY DEFAULT gen_random_uuid() UNIQUE NOT NULL,
+                    \(ident: Column.userID.rawValue) UUID REFERENCES \(ident: userSchema)(\(ident: userIDColumn)) ON DELETE CASCADE NOT NULL,
+                    \(ident: Column.createdAt.rawValue) TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+                );
+            """)
+            
+            try await databaseConnection(database).raw(query).run()
         }
         
         func revert(on database: any Database) async throws {
